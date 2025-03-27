@@ -37,7 +37,7 @@ minihelp:
 	@echo type \"make help\" for help with common glibc makefile targets
 	@echo
 
-
+
 ifneq ($(AUTOCONF),no)
 
 define autoconf-it

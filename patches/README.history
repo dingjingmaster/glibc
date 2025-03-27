@@ -1,0 +1,977 @@
+commit 241a42c9aa5e79bdae3a815766bd66944524656a (HEAD -> gentoo/2.41, gentoo/gentoo/2.41)
+Author:     Adhemerval Zanella <adhemerval.zanella@linaro.org>
+AuthorDate: Wed Mar 12 10:59:17 2025 -0300
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Fri Mar 14 22:54:56 2025 +0100
+
+    nptl: Check if thread is already terminated in sigcancel_handler (BZ 32782)
+    
+    The SIGCANCEL signal handler should not issue __syscall_do_cancel,
+    which calls __do_cancel and __pthread_unwind, if the cancellation
+    is already in proces (and libgcc unwind is not reentrant).  Any
+    cancellation signal received after is ignored.
+    
+    Checked on x86_64-linux-gnu and aarch64-linux-gnu.
+    
+    Tested-by: Aurelien Jarno <aurelien@aurel32.net>
+    Reviewed-by: Florian Weimer <fweimer@redhat.com>
+    
+    (cherry picked from commit 360cce0b066f34e85e473c04cdc16e6fa426021b)
+    (cherry picked from commit ce9b765522f014daa0392099dd9ba1f7ddcc511d)
+
+ NEWS                           |  1 +
+ nptl/pthread_cancel.c          | 14 ++++----
+ sysdeps/pthread/Makefile       |  1 +
+ sysdeps/pthread/tst-cancel32.c | 73 ++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 83 insertions(+), 6 deletions(-)
+
+commit 220dc18854cdb4cd1bbd76ccb5f485b98c6e8509
+Author:     Florian Weimer <fweimer@redhat.com>
+AuthorDate: Thu Mar 13 06:07:07 2025 +0100
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Fri Mar 14 22:54:36 2025 +0100
+
+    nptl: PTHREAD_COND_INITIALIZER compatibility with pre-2.41 versions (bug 32786)
+    
+    The new initializer and struct layout does not initialize the
+    __g_signals field in the old struct layout before the change in
+    commit c36fc50781995e6758cae2b6927839d0157f213c ("nptl: Remove
+    g_refs from condition variables").  Bring back fields at the end
+    of struct __pthread_cond_s, so that they are again zero-initialized.
+    
+    Reviewed-by: Sam James <sam@gentoo.org>
+    (cherry picked from commit dbc5a50d12eff4cb3f782129029d04b8a76f58e7)
+    (cherry picked from commit 98c712855d6606d078aaabaa7ef24b695c3f0349)
+
+ NEWS                                    | 1 +
+ sysdeps/nptl/bits/thread-shared-types.h | 2 ++
+ sysdeps/nptl/pthread.h                  | 2 +-
+ 3 files changed, 4 insertions(+), 1 deletion(-)
+
+commit d6167c1f90d905b9d724830971bd3e98a99d82fa
+Author:     Michael Jeanson <mjeanson@efficios.com>
+AuthorDate: Fri Feb 14 13:54:22 2025 -0500
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Fri Mar 14 22:54:12 2025 +0100
+
+    nptl: clear the whole rseq area before registration
+    
+    Due to the extensible nature of the rseq area we can't explictly
+    initialize fields that are not part of the ABI yet. It was agreed with
+    upstream that all new fields will be documented as zero initialized by
+    userspace. Future kernels configured with CONFIG_DEBUG_RSEQ will
+    validate the content of all fields during registration.
+    
+    Replace the explicit field initialization with a memset of the whole
+    rseq area which will cover fields as they are added to future kernels.
+    
+    Signed-off-by: Michael Jeanson <mjeanson@efficios.com>
+    Reviewed-by: Florian Weimer <fweimer@redhat.com>
+    (cherry picked from commit 689a62a4217fae78b9ce0db781dc2a421f2b1ab4)
+    (cherry picked from commit e22c132484ea49be0478e4dcbd108d433d70f64c)
+
+ sysdeps/nptl/dl-tls_init_tp.c           |  1 +
+ sysdeps/unix/sysv/linux/rseq-internal.h | 11 +++++------
+ 2 files changed, 6 insertions(+), 6 deletions(-)
+
+commit a8ceead7f8a6523f09e2533d7d6104b078db2dea
+Author:     Florian Weimer <fweimer@redhat.com>
+AuthorDate: Wed Mar 12 10:23:47 2025 +0100
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Fri Mar 14 22:53:54 2025 +0100
+
+    Linux: Remove attribute access from sched_getattr (bug 32781)
+    
+    The GCC attribute expects an element count, not bytes.
+    
+    (cherry picked from commit 74c68fa61b5ebf4c64605a3cc5e47154a66671ce)
+    (cherry picked from commit 33bfd9020fdad925297c9e133055bd8804028f32)
+
+ NEWS                                 | 1 +
+ sysdeps/unix/sysv/linux/bits/sched.h | 2 +-
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+commit a819a35bb4b5e22d10cc7dd7e2f2dab18a6cc307
+Author:     Aurelien Jarno <aurelien@aurel32.net>
+AuthorDate: Thu Mar 6 19:34:15 2025 +0100
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Fri Mar 14 22:53:34 2025 +0100
+
+    math: Remove an extra semicolon in math function declarations
+    
+    Commit 6bc301672bfbd ("math: Remove __XXX math functions from installed
+    math.h [BZ #32418]") left an extra semicolon after macro expansion. For
+    instance the ceil declaration after expansion is:
+    
+      extern double ceil (double __x) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));;
+    
+    This chokes very naive parsers like gauche c-wrapper. Fix that by
+    removing that extra semicolon in the macro.
+    
+    Reviewed-by: Adhemerval Zanella  <adhemerval.zanella@linaro.org>
+    (cherry picked from commit 443cb0b5f25129dd0f1e9f9101299d31c4700b7f)
+    (cherry picked from commit 66fc3bd75871d7239245c767abf44fb96d772f66)
+
+ math/bits/mathcalls-macros.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit eb4db403b00e4cf656152f2915bf363b74b1979d
+Author:     Florian Weimer <fweimer@redhat.com>
+AuthorDate: Fri Mar 7 21:40:55 2025 +0100
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Fri Mar 14 22:53:15 2025 +0100
+
+    posix: Move environ helper variables next to environ definition (bug 32541)
+    
+    This helps with statically interposing getenv.
+    
+    Updates commit 7a61e7f557a97ab597d6fca5e2d1f13f65685c61
+    ("stdlib: Make getenv thread-safe in more cases").
+    
+    Reviewed-by: H.J. Lu <hjl.tools@gmail.com>
+    (cherry picked from commit 6ef0bd02dbe34aab8b956ffa2db5679341d520f5)
+    (cherry picked from commit 1a3083b999928d70b4889c889e38b1df32232fd2)
+
+ posix/environ.c            |  4 ++++
+ stdlib/Makefile            |  2 ++
+ stdlib/getenv.c            |  3 ---
+ stdlib/tst-getenv-static.c | 38 ++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 44 insertions(+), 3 deletions(-)
+
+commit fe070c584243c6d3df3575a89b8fc6da51b85b85
+Author:     Florian Weimer <fweimer@redhat.com>
+AuthorDate: Fri Mar 7 07:52:11 2025 +0100
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Fri Mar 14 22:52:58 2025 +0100
+
+    configure: Fix spelling of -Wl,--no-error-execstack option
+    
+    BFD ld recognizes all -no-* options (with a single leading dash)
+    unconditionally.
+    
+    Fixes commit a2bd5008a99032830add3e4005c25b61e3207112
+    ("Pass -Wl,--no-error-execstack for tests where -Wl,-z,execstack
+    is used [PR32717]").
+    
+    (cherry picked from commit 59dc232df277c21239c357e3519682c26e182cd7)
+    (cherry picked from commit 91f8cff2c48f678d4ba7ed3b3845290c45a672b3)
+
+ configure    | 4 ++--
+ configure.ac | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+commit 72df14acb8794379c997a7a4c29b72d0bc587cc2
+Author:     H.J. Lu <hjl.tools@gmail.com>
+AuthorDate: Fri Mar 7 08:58:47 2025 +0800
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Fri Mar 14 22:52:39 2025 +0100
+
+    elf: Check if __attribute__ ((aligned (65536))) is supported
+    
+    The BZ #32763 tests fail to build for MicroBlaze (which defines
+    MAX_OFILE_ALIGNMENT to (32768*8) in GCC, so __attribute__ ((aligned
+    (65536))) is unsupported).  Add a configure-time check to enable BZ #32763
+    tests only if __attribute__ ((aligned (65536))) is supported.
+    
+    Signed-off-by: H.J. Lu <hjl.tools@gmail.com>
+    Reviewed-by: Sam James <sam@gentoo.org>
+    (cherry picked from commit 9b91484bee8f6f1bf1e2d26a8df461b553784528)
+    (cherry picked from commit fd202462c5f8ffa4dfb6b7c0c4cec2bce4bec408)
+
+ configure    | 30 +++++++++++++++++++++++++++++-
+ configure.ac | 11 +++++++++++
+ elf/Makefile | 12 ++++++++----
+ 3 files changed, 48 insertions(+), 5 deletions(-)
+
+commit 2867b5b53c06fa09ec2d879a375f29cecf738efd
+Author:     H.J. Lu <hjl.tools@gmail.com>
+AuthorDate: Wed Mar 5 10:19:59 2025 +0800
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Fri Mar 14 22:52:20 2025 +0100
+
+    static-pie: Skip the empty PT_LOAD segment at offset 0 [BZ #32763]
+    
+    As shown in
+    
+    https://sourceware.org/bugzilla/show_bug.cgi?id=25237
+    
+    linker may generate an empty PT_LOAD segments at offset 0:
+    
+    Elf file type is EXEC (Executable file)
+    Entry point 0x4000e8
+    There are 3 program headers, starting at offset 64
+    
+    Program Headers:
+      Type           Offset             VirtAddr           PhysAddr
+                     FileSiz            MemSiz              Flags  Align
+      LOAD           0x0000000000000000 0x0000000000400000 0x0000000000400000
+                     0x00000000000000f0 0x00000000000000f0  R E    0x1000
+      LOAD           0x0000000000000000 0x0000000000410000 0x0000000000410000
+                     0x0000000000000000 0x0000000000b5dce8  RW     0x10000
+      GNU_STACK      0x0000000000000000 0x0000000000000000 0x0000000000000000
+                     0x0000000000000000 0x0000000000000000  RW     0x10
+    
+     Section to Segment mapping:
+      Segment Sections...
+       00     .text
+       01     .bss
+       02
+    
+    Skip the empty PT_LOAD segment at offset 0 to support such binaries.
+    This fixes BZ #32763.
+    
+    Signed-off-by: H.J. Lu <hjl.tools@gmail.com>
+    Reviewed-by: Sam James <sam@gentoo.org>
+    (cherry picked from commit 596130591ae4b058a529cc1318b95e624559054c)
+    (cherry picked from commit 746ef8e93964a99db3e3fa4b8a7aba179185ef0a)
+
+ elf/Makefile              |  5 +++++
+ elf/dl-reloc-static-pie.c |  3 ++-
+ elf/tst-pie-bss-static.c  | 19 +++++++++++++++++++
+ elf/tst-pie-bss.c         | 30 ++++++++++++++++++++++++++++++
+ 4 files changed, 56 insertions(+), 1 deletion(-)
+
+commit e24b9a76e47e26740329158bf6bf8d4fbdf5e99c
+Author:     Sam James <sam@gentoo.org>
+AuthorDate: Tue Feb 18 18:49:09 2025 +0000
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Fri Mar 14 22:51:50 2025 +0100
+
+    Pass -Wl,--no-error-execstack for tests where -Wl,-z,execstack is used [PR32717]
+    
+    When GNU Binutils is configured with --enable-error-execstack=yes, a handful
+    of our tests which rely on -Wl,-z,execstack fail. Pass --Wl,--no-error-execstack
+    to override the behaviour and get a warning instead.
+    
+    Bug: https://sourceware.org/PR32717
+    Reviewed-by: Adhemerval Zanella  <adhemerval.zanella@linaro.org>
+    (cherry picked from commit a2bd5008a99032830add3e4005c25b61e3207112)
+    (cherry picked from commit 56609f8df1fa05c3af13dbe8c84bf5ce62192cd2)
+
+ config.make.in |  1 +
+ configure      | 35 +++++++++++++++++++++++++++++++++++
+ configure.ac   |  4 ++++
+ elf/Makefile   |  6 ++++++
+ nptl/Makefile  |  3 +++
+ 5 files changed, 49 insertions(+)
+
+commit 222389b5274fa685139265a04c3e2a59f1a0aa1a
+Author:     Wilco Dijkstra <wilco.dijkstra@arm.com>
+AuthorDate: Thu Feb 27 16:28:52 2025 +0000
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Wed Mar 5 16:34:22 2025 +0100
+
+    AArch64: Use prefer_sve_ifuncs for SVE memset
+    
+    Use prefer_sve_ifuncs for SVE memset just like memcpy.
+    
+    Reviewed-by: Yury Khrustalev <yury.khrustalev@arm.com>
+    (cherry picked from commit 0f044be1dae5169d0e57f8d487b427863aeadab4)
+    (cherry picked from commit 89be78704ed8d8159c20f7cdbc5f461a322ab884)
+
+ sysdeps/aarch64/multiarch/memset.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit 2ac2f2406c04ac6d73a057e15604b6b0ff5594ae
+Author:     Wilco Dijkstra <wilco.dijkstra@arm.com>
+AuthorDate: Tue Dec 24 18:01:59 2024 +0000
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Wed Mar 5 16:34:11 2025 +0100
+
+    AArch64: Add SVE memset
+    
+    Add SVE memset based on the generic memset with predicated load for sizes < 16.
+    Unaligned memsets of 128-1024 are improved by ~20% on average by using aligned
+    stores for the last 64 bytes.  Performance of random memset benchmark improves
+    by ~2% on Neoverse V1.
+    
+    Reviewed-by: Yury Khrustalev <yury.khrustalev@arm.com>
+    (cherry picked from commit 163b1bbb76caba4d9673c07940c5930a1afa7548)
+    (cherry picked from commit c47c3890f15e82954a502cab7f7f1672ff3d7715)
+
+ sysdeps/aarch64/multiarch/Makefile           |   1 +
+ sysdeps/aarch64/multiarch/ifunc-impl-list.c  |   1 +
+ sysdeps/aarch64/multiarch/memset.c           |   4 +
+ sysdeps/aarch64/multiarch/memset_sve_zva64.S | 123 +++++++++++++++++++++++++++
+ 4 files changed, 129 insertions(+)
+
+commit 81070cbe90d0c62c06a37e3b0e1ab4c1ec197ffd
+Author:     Wilco Dijkstra <wilco.dijkstra@arm.com>
+AuthorDate: Fri Dec 13 15:43:07 2024 +0000
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Wed Mar 5 16:33:57 2025 +0100
+
+    math: Improve layout of exp/exp10 data
+    
+    GCC aligns global data to 16 bytes if their size is >= 16 bytes.  This patch
+    changes the exp_data struct slightly so that the fields are better aligned
+    and without gaps.  As a result on targets that support them, more load-pair
+    instructions are used in exp.  Exp10 is improved by moving invlog10_2N later
+    so that neglog10_2hiN and neglog10_2loN can be loaded using load-pair.
+    
+    The exp benchmark improves 2.5%, "144bits" by 7.2%, "768bits" by 12.7% on
+    Neoverse V2.  Exp10 improves by 1.5%.
+    
+    Reviewed-by: Adhemerval Zanella  <adhemerval.zanella@linaro.org>
+    (cherry picked from commit 5afaf99edb326fd9f36eb306a828d129a3a1d7f7)
+    (cherry picked from commit e0bc5f64eaf75764db0f7972ac1763315f5eab81)
+
+ sysdeps/ieee754/dbl-64/math_config.h | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+commit 5b84b064ea85750fce47bee06ac64dfd7605cc5d
+Author:     Yury Khrustalev <yury.khrustalev@arm.com>
+AuthorDate: Thu Jan 23 10:36:36 2025 +0000
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Wed Mar 5 16:33:44 2025 +0100
+
+    aarch64: Add GCS test with signal handler
+    
+    Test that when we return from a function that enabled GCS at runtime
+    we get SIGSEGV. Also test that ucontext contains GCS block with the
+    GCS pointer.
+    
+    Reviewed-by: Adhemerval Zanella  <adhemerval.zanella@linaro.org>
+    (cherry picked from commit 009c5a2dca7cfc66b01b7217edb20996e25642da)
+
+ sysdeps/unix/sysv/linux/aarch64/Makefile           |   5 +
+ sysdeps/unix/sysv/linux/aarch64/tst-gcs-noreturn.c | 101 +++++++++++++++++++++
+ 2 files changed, 106 insertions(+)
+
+commit f623d892a5f2863095475ad1f81547b48b3d78b0
+Author:     Yury Khrustalev <yury.khrustalev@arm.com>
+AuthorDate: Wed Jan 22 17:21:26 2025 +0000
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Wed Mar 5 16:33:33 2025 +0100
+
+    aarch64: Add GCS tests for dlopen
+    
+    Reviewed-by: Adhemerval Zanella  <adhemerval.zanella@linaro.org>
+    (cherry picked from commit 8d98ee8d70cd4bbbb2e7d3292600c8719e24a255)
+
+ Makeconfig                                         |  2 +-
+ sysdeps/unix/sysv/linux/aarch64/Makefile           | 23 ++++++++
+ .../sysv/linux/aarch64/tst-gcs-dlopen-disabled.c   |  3 ++
+ .../sysv/linux/aarch64/tst-gcs-dlopen-enforced.c   |  3 ++
+ .../linux/aarch64/tst-gcs-dlopen-optional-off.c    |  3 ++
+ .../linux/aarch64/tst-gcs-dlopen-optional-on.c     |  3 ++
+ .../sysv/linux/aarch64/tst-gcs-dlopen-override.c   |  3 ++
+ sysdeps/unix/sysv/linux/aarch64/tst-gcs-dlopen.c   | 62 ++++++++++++++++++++++
+ 8 files changed, 101 insertions(+), 1 deletion(-)
+
+commit 0dee7e017a794e8dd4b0dda312550beba9d36b09
+Author:     Yury Khrustalev <yury.khrustalev@arm.com>
+AuthorDate: Wed Jan 22 15:06:18 2025 +0000
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Wed Mar 5 16:33:21 2025 +0100
+
+    aarch64: Add GCS tests for transitive dependencies
+    
+    Reviewed-by: Adhemerval Zanella  <adhemerval.zanella@linaro.org>
+    (cherry picked from commit 61ba3cdfa9e946fc91b0113a7a569cbe57fb46c1)
+
+ sysdeps/unix/sysv/linux/aarch64/Makefile           | 29 +++++++++++++++
+ sysdeps/unix/sysv/linux/aarch64/tst-gcs-helper.h   | 39 ++++++++++++++++++++
+ sysdeps/unix/sysv/linux/aarch64/tst-gcs-mod1.c     | 27 ++++++++++++++
+ sysdeps/unix/sysv/linux/aarch64/tst-gcs-mod2.c     | 25 +++++++++++++
+ sysdeps/unix/sysv/linux/aarch64/tst-gcs-mod3.c     | 25 +++++++++++++
+ .../sysv/linux/aarch64/tst-gcs-shared-disabled.c   |  2 ++
+ .../linux/aarch64/tst-gcs-shared-enforced-abort.c  |  2 ++
+ .../sysv/linux/aarch64/tst-gcs-shared-optional.c   |  2 ++
+ .../sysv/linux/aarch64/tst-gcs-shared-override.c   |  2 ++
+ sysdeps/unix/sysv/linux/aarch64/tst-gcs-shared.c   | 41 ++++++++++++++++++++++
+ sysdeps/unix/sysv/linux/aarch64/tst-gcs-skeleton.c | 17 +--------
+ 11 files changed, 195 insertions(+), 16 deletions(-)
+
+commit 592b33fdeb2f9e1f28bb214b044fabf77936b5e9
+Author:     Yury Khrustalev <yury.khrustalev@arm.com>
+AuthorDate: Tue Jan 21 13:33:20 2025 +0000
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Wed Mar 5 16:33:02 2025 +0100
+
+    aarch64: Add tests for Guarded Control Stack
+    
+    These tests validate that GCS tunable works as expected depending
+    on the GCS markings in the test binaries.
+    
+    Tests validate both static and dynamically linked binaries.
+    
+    These new tests are AArch64 specific. Moreover, they are included only
+    if linker supports the "-z gcs=<value>" option. If built, these tests
+    will run on systems with and without HWCAP_GCS. In the latter case the
+    tests will be reported as UNSUPPORTED.
+    
+    Reviewed-by: Adhemerval Zanella  <adhemerval.zanella@linaro.org>
+    (cherry picked from commit fda5730898bc36d637bf32588c16ea06dde81d81)
+
+ sysdeps/unix/sysv/linux/aarch64/Makefile           | 72 +++++++++++++++++++++-
+ sysdeps/unix/sysv/linux/aarch64/tst-gcs-abort.sh   | 39 ++++++++++++
+ .../sysv/linux/aarch64/tst-gcs-disabled-static.c   |  1 +
+ sysdeps/unix/sysv/linux/aarch64/tst-gcs-disabled.c |  2 +
+ .../sysv/linux/aarch64/tst-gcs-enforced-abort.c    |  2 +
+ .../linux/aarch64/tst-gcs-enforced-static-abort.c  |  1 +
+ .../sysv/linux/aarch64/tst-gcs-enforced-static.c   |  1 +
+ sysdeps/unix/sysv/linux/aarch64/tst-gcs-enforced.c |  2 +
+ .../unix/sysv/linux/aarch64/tst-gcs-optional-off.c |  2 +
+ .../unix/sysv/linux/aarch64/tst-gcs-optional-on.c  |  2 +
+ .../linux/aarch64/tst-gcs-optional-static-off.c    |  1 +
+ .../linux/aarch64/tst-gcs-optional-static-on.c     |  1 +
+ .../sysv/linux/aarch64/tst-gcs-override-static.c   |  1 +
+ sysdeps/unix/sysv/linux/aarch64/tst-gcs-override.c |  2 +
+ sysdeps/unix/sysv/linux/aarch64/tst-gcs-skeleton.c | 58 +++++++++++++++++
+ 15 files changed, 186 insertions(+), 1 deletion(-)
+
+commit fe5dd6603e0baeb744d874a174b210eca598fdb2
+Author:     Yury Khrustalev <yury.khrustalev@arm.com>
+AuthorDate: Tue Jan 28 16:13:51 2025 +0000
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Wed Mar 5 16:32:45 2025 +0100
+
+    aarch64: Add configure checks for GCS support
+    
+     - Add check that linker supports -z gcs=...
+     - Add checks that main and test compiler support
+       -mbranch-protection=gcs
+    
+    Reviewed-by: Adhemerval Zanella  <adhemerval.zanella@linaro.org>
+    (cherry picked from commit 6d1f97bb0667e35cbb4e656516b0b5f48afcabde)
+
+ configure    | 99 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ configure.ac | 17 +++++++++++
+ 2 files changed, 116 insertions(+)
+
+commit 25e97e446c3998d655ad8f1bbea2e33976834784
+Author:     Yat Long Poon <yatlong.poon@arm.com>
+AuthorDate: Thu Feb 13 18:03:04 2025 +0000
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Wed Mar 5 16:32:32 2025 +0100
+
+    AArch64: Improve codegen for SVE powf
+    
+    Improve memory access with indexed/unpredicated instructions.
+    Eliminate register spills.  Speedup on Neoverse V1: 3%.
+    
+    Reviewed-by: Wilco Dijkstra  <Wilco.Dijkstra@arm.com>
+    (cherry picked from commit 95e807209b680257a9afe81a507754f1565dbb4d)
+    (cherry picked from commit 7774a9d07ab2fa3704deb0ffa60588017cf990e7)
+
+ sysdeps/aarch64/fpu/powf_sve.c | 117 +++++++++++++++++++++--------------------
+ 1 file changed, 59 insertions(+), 58 deletions(-)
+
+commit 73c32fe519787a99b6060722155abee797db134c
+Author:     Yat Long Poon <yatlong.poon@arm.com>
+AuthorDate: Thu Feb 13 18:02:01 2025 +0000
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Wed Mar 5 16:32:17 2025 +0100
+
+    AArch64: Improve codegen for SVE pow
+    
+    Move constants to struct.  Improve memory access with indexed/unpredicated
+    instructions.  Eliminate register spills.  Speedup on Neoverse V1: 24%.
+    
+    Reviewed-by: Wilco Dijkstra  <Wilco.Dijkstra@arm.com>
+    (cherry picked from commit 0b195651db3ae793187c7dd6d78b5a7a8da9d5e6)
+    (cherry picked from commit 2025e27a817f99c64ddcd663b7861012893d7aab)
+
+ sysdeps/aarch64/fpu/pow_sve.c | 245 ++++++++++++++++++++++++------------------
+ 1 file changed, 142 insertions(+), 103 deletions(-)
+
+commit bbf48d89ba576c41dc6e6b7be197b5181c5e2a3b
+Author:     Yat Long Poon <yatlong.poon@arm.com>
+AuthorDate: Thu Feb 13 18:00:50 2025 +0000
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Wed Mar 5 16:32:01 2025 +0100
+
+    AArch64: Improve codegen for SVE erfcf
+    
+    Reduce number of MOV/MOVPRFXs and use unpredicated FMUL.
+    Replace MUL with LSL.  Speedup on Neoverse V1: 6%.
+    
+    Reviewed-by: Wilco Dijkstra  <Wilco.Dijkstra@arm.com>
+    (cherry picked from commit f5ff34cb3c75ec1061c75bb9188b3c1176426947)
+    (cherry picked from commit f3d9c116cb0a2efc3b7afafe2f966389526d5e70)
+
+ sysdeps/aarch64/fpu/erfcf_sve.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+commit a360ec7f8b98a385c2615b110e95e74fdee1b400
+Author:     Luna Lamb <luna.lamb@arm.com>
+AuthorDate: Thu Feb 13 17:54:46 2025 +0000
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Wed Mar 5 16:31:44 2025 +0100
+
+    Aarch64: Improve codegen in SVE exp and users, and update expf_inline
+    
+    Use unpredicted muls, and improve memory access.
+    7%, 3% and 1% improvement in throughput microbenchmark on Neoverse V1,
+    for exp, exp2 and cosh respectively.
+    
+    Reviewed-by: Wilco Dijkstra  <Wilco.Dijkstra@arm.com>
+    (cherry picked from commit c0ff447edf19bd4630fe79adf5e8b896405b059f)
+    (cherry picked from commit 94859e86807aff482f742ea650c32716f2780bdc)
+
+ sysdeps/aarch64/fpu/cosh_sve.c       | 18 ++++++++++--------
+ sysdeps/aarch64/fpu/exp10_sve.c      | 25 +++++++++++++++----------
+ sysdeps/aarch64/fpu/exp2_sve.c       | 26 ++++++++++++++------------
+ sysdeps/aarch64/fpu/exp_sve.c        | 36 +++++++++++++++++++-----------------
+ sysdeps/aarch64/fpu/sv_expf_inline.h |  3 +--
+ 5 files changed, 59 insertions(+), 49 deletions(-)
+
+commit c4698147cfc41c887d2f8872ce71b1d7dc2c48cd
+Author:     Luna Lamb <luna.lamb@arm.com>
+AuthorDate: Thu Feb 13 17:52:09 2025 +0000
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Wed Mar 5 16:31:29 2025 +0100
+
+    Aarch64: Improve codegen in SVE asinh
+    
+    Use unpredicated muls, use lanewise mla's and improve memory access.
+    1% regression in throughput microbenchmark on Neoverse V1.
+    
+    Reviewed-by: Wilco Dijkstra  <Wilco.Dijkstra@arm.com>
+    (cherry picked from commit 8f0e7fe61e0a2ad5ed777933703ce09053810ec4)
+    (cherry picked from commit 7c9a0868077c7e2cfed161ea47c40a96b269c773)
+
+ sysdeps/aarch64/fpu/asinh_sve.c | 111 ++++++++++++++++++++++++++++------------
+ 1 file changed, 77 insertions(+), 34 deletions(-)
+
+commit ded425166455867aaaba458e36ea266f59b05862
+Author:     Yangyu Chen <cyy@cyyself.name>
+AuthorDate: Tue Feb 25 01:12:19 2025 +0800
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Wed Mar 5 16:31:16 2025 +0100
+
+    RISC-V: Fix IFUNC resolver cannot access gp pointer
+    
+    In some cases, an IFUNC resolver may need to access the gp pointer to
+    access global variables. Such an object may have l_relocated == 0 at
+    this time. In this case, an IFUNC resolver will fail to access a global
+    variable and cause a SIGSEGV.
+    
+    This patch fixes this issue by relaxing the check of l_relocated in
+    elf_machine_runtime_setup, but added a check for SHARED case to avoid
+    using this code in static-linked executables. Such object have already
+    set up the gp pointer in load_gp function and l->l_scope will be NULL if
+    it is a pie object. So if we use these code to set up the gp pointer
+    again for static-pie, it will causing a SIGSEGV in glibc as original bug
+    on BZ #31317.
+    
+    I have also reproduced and checked BZ #31317 using the mold commit
+    bed5b1731b ("illumos: Treat absolute symbols specially"), this patch can
+    fix the issue.
+    
+    Also, we used the wrong gp pointer previously because ref->st_value is
+    not the relocated address but just the offset from the base address of
+    ELF. An edge case may happen if we reference gp pointer in a IFUNC
+    resolver in a PIE object, but it will not happen in compiler-generated
+    codes since -pie will disable relax to gp. In this case, the GP will be
+    initialized incorrectly since the ref->st_value is not the address after
+    relocation. This patch fixes this issue by adding the l->l_addr to
+    ref->st_value to get the relocated address for the gp pointer. We don't
+    use SYMBOL_ADDRESS macro here because __global_pointer$ is a special
+    symbol that has SHN_ABS type, but it will use PC-relative addressing in
+    the load_gp function using lla.
+    
+    Closes: BZ #32269
+    Fixes: 96d1b9ac23 ("RISC-V: Fix the static-PIE non-relocated object check")
+    
+    Co-authored-by: Vivian Wang <dramforever@live.com>
+    Signed-off-by: Yangyu Chen <cyy@cyyself.name>
+    (cherry picked from commit 3fd2ff7685e3ee85c8cd2896f28ad62f67d7c483)
+    (cherry picked from commit 30992cb5e9d713ab0f4135dd8776a201f7a53f24)
+
+ NEWS                       |  1 +
+ sysdeps/riscv/dl-machine.h | 17 +++++++++++------
+ 2 files changed, 12 insertions(+), 6 deletions(-)
+
+commit 4ed5ce2f6b43fc3c5faee48b3b85abe302ef0df4
+Author:     John David Anglin <danglin@gcc.gnu.org>
+AuthorDate: Tue Feb 25 15:57:53 2025 -0500
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Wed Mar 5 16:30:58 2025 +0100
+
+    math: Add optimization barrier to ensure a1 + u.d is not reused [BZ #30664]
+    
+    A number of fma tests started to fail on hppa when gcc was changed to
+    use Ranger rather than EVRP.  Eventually I found that the value of
+    a1 + u.d in this is block of code was being computed in FE_TOWARDZERO
+    mode and not the original rounding mode:
+    
+        if (TININESS_AFTER_ROUNDING)
+          {
+            w.d = a1 + u.d;
+            if (w.ieee.exponent == 109)
+              return w.d * 0x1p-108;
+          }
+    
+    This caused the exponent value to be wrong and the wrong return path
+    to be used.
+    
+    Here we add an optimization barrier after the rounding mode is reset
+    to ensure that the previous value of a1 + u.d is not reused.
+    
+    Signed-off-by: John David Anglin <dave.anglin@bell.net>
+    (cherry picked from commit 07288c7445bba747f65380066b1b5bdb2df5b630)
+
+ sysdeps/ieee754/dbl-64/s_fma.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+commit 3e026aa703f59bbf75fe00176bf7d49197d8ecd2
+Author:     koraynilay <koray.fra@gmail.com>
+AuthorDate: Sat Feb 22 15:55:59 2025 +0100
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Wed Mar 5 16:30:37 2025 +0100
+
+    math: Fix `unknown type name '__float128'` for clang 3.4 to 3.8.1 (bug 32694)
+    
+    When compiling a program that includes <bits/floatn.h> using a clang version
+    between 3.4 (included) and 3.8.1 (included), clang will fail with `unknown type
+    name '__float128'; did you mean '__cfloat128'?`. This changes fixes the clang
+    prerequirements macro call in floatn.h to check for clang 3.9 instead of 3.4,
+    since support for __float128 was actually enabled in 3.9 by:
+    
+    commit 50f29e06a1b6a38f0bba9360cbff72c82d46cdd4
+    Author: Nemanja Ivanovic <nemanja.i.ibm@gmail.com>
+    Date:   Wed Apr 13 09:49:45 2016 +0000
+    
+        Enable support for __float128 in Clang
+    
+    This fixes bug 32694.
+    
+    Signed-off-by: koraynilay <koray.fra@gmail.com>
+    Reviewed-by: H.J. Lu <hjl.tools@gmail.com>
+    (cherry picked from commit 29803ed3ce420f01e7c567c97fc8945d5e5e5992)
+    (cherry picked from commit 2cb04444b934e000a4e36c1876ef2bf03dd80d66)
+
+ sysdeps/x86/bits/floatn.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+commit a9e18aa520afb1c4dd9f34e60937bd6efd367132
+Author:     H.J. Lu <hjl.tools@gmail.com>
+AuthorDate: Thu Feb 20 07:08:26 2025 +0800
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Wed Mar 5 16:30:20 2025 +0100
+
+    x86 (__HAVE_FLOAT128): Defined to 0 for Intel SYCL compiler [BZ #32723]
+    
+    Intel compiler always defines __INTEL_LLVM_COMPILER.  When SYCL is
+    enabled by -fsycl, it also defines SYCL_LANGUAGE_VERSION.  Since Intel
+    SYCL compiler doesn't support _Float128:
+    
+    https://github.com/intel/llvm/issues/16903
+    
+    define __HAVE_FLOAT128 to 0 for Intel SYCL compiler.
+    
+    This fixes BZ #32723.
+    
+    Signed-off-by: H.J. Lu <hjl.tools@gmail.com>
+    Reviewed-by: Sam James <sam@gentoo.org>
+    (cherry picked from commit 5a4573be6f96ff49111bb6cae767676b5aafa7a8)
+    (cherry picked from commit a900dbaf70f0a957f56b52caa69173592ad7596e)
+
+ sysdeps/x86/bits/floatn.h | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+commit b7e7ad6f2f571807027f57ec6d1e890a24c7822e
+Author:     Aurelien Jarno <aurelien@aurel32.net>
+AuthorDate: Sat Feb 15 11:08:33 2025 +0100
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Wed Mar 5 16:30:00 2025 +0100
+
+    Fix tst-aarch64-pkey to handle ENOSPC as not supported
+    
+    The syscall pkey_alloc can return ENOSPC to indicate either that all
+    keys are in use or that the system runs in a mode in which memory
+    protection keys are disabled. In such case the test should not fail and
+    just return unsupported.
+    
+    This matches the behaviour of the generic tst-pkey.
+    
+    Reviewed-by: Adhemerval Zanella  <adhemerval.zanella@linaro.org>
+    Reviewed-by: Florian Weimer <fweimer@redhat.com>
+    (cherry picked from commit 60f2d6be657aa8c663ee14bd266d343ae0f35afb)
+    (cherry picked from commit 1e0e33e1b19a7634b364ac7b97c3c9612d5b776f)
+
+ sysdeps/unix/sysv/linux/aarch64/tst-aarch64-pkey.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+commit af942a8ab41f82665ba74a8bea77689f18908e2f
+Author:     Siddhesh Poyarekar <siddhesh@sourceware.org>
+AuthorDate: Fri Jan 31 12:16:30 2025 -0500
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Wed Mar 5 16:29:44 2025 +0100
+
+    assert: Add test for CVE-2025-0395
+    
+    Use the __progname symbol to override the program name to induce the
+    failure that CVE-2025-0395 describes.
+    
+    This is related to BZ #32582
+    
+    Signed-off-by: Siddhesh Poyarekar <siddhesh@sourceware.org>
+    Reviewed-by: Adhemerval Zanella  <adhemerval.zanella@linaro.org>
+    (cherry picked from commit cdb9ba84191ce72e86346fb8b1d906e7cd930ea2)
+    (cherry picked from commit 69fda28279b497bd405fdd442a6d8e4d3d5f681b)
+
+ assert/Makefile                  |  1 +
+ assert/tst-assert-sa-2025-0001.c | 92 ++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 93 insertions(+)
+
+commit 91b9e3668f8dd5987d9c1dcadc5c4ffc72a8b97e
+Author:     Adhemerval Zanella <adhemerval.zanella@linaro.org>
+AuthorDate: Sun Feb 2 16:57:49 2025 -0300
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Fri Feb 7 19:03:36 2025 +0100
+
+    math: Fix tanf for some inputs (BZ 32630)
+    
+    The logic was copied wrong from CORE-MATH.
+    
+    (cherry picked from commit 09e7f4d594b4308fbea18e3044148d67b59757c9)
+    (cherry picked from commit cf88351b685da86667e17d344414a70696ac82f1)
+
+ NEWS                            |  2 ++
+ math/auto-libm-test-in          |  1 +
+ math/auto-libm-test-out-tan     | 25 +++++++++++++++++++++++++
+ sysdeps/ieee754/flt-32/s_tanf.c |  2 +-
+ 4 files changed, 29 insertions(+), 1 deletion(-)
+
+commit 42338a894e66a3837217eb44279660596c54c59f
+Author:     John David Anglin <danglin@gcc.gnu.org>
+AuthorDate: Wed Jan 29 16:51:16 2025 -0500
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Fri Feb 7 19:03:19 2025 +0100
+
+    nptl: Correct stack size attribute when stack grows up [BZ #32574]
+    
+    Set stack size attribute to the size of the mmap'd region only
+    when the size of the remaining stack space is less than the size
+    of the mmap'd region.
+    
+    This was reversed.  As a result, the initial stack size was only
+    135168 bytes.  On architectures where the stack grows down, the
+    initial stack size is approximately 8384512 bytes with the default
+    rlimit settings.  The small main stack size on hppa broke
+    applications like ruby that check for stack overflows.
+    
+    Signed-off-by: John David Anglin <dave.anglin@bell.net>
+    (cherry picked from commit cb7f20653724029be89224ed3a35d627cc5b4163)
+
+ nptl/pthread_getattr_np.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+commit accba8296bc8c5838b7780730a265cf17a9e90fc
+Author:     Adhemerval Zanella <adhemerval.zanella@linaro.org>
+AuthorDate: Fri Jan 31 10:34:32 2025 -0300
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Fri Feb 7 19:03:01 2025 +0100
+
+    math: Fix sinhf for some inputs (BZ 32627)
+    
+    The logic was copied wrong from CORE-MATH.
+    
+    (cherry picked from commit d85a7719536f4892f2b53d4594e18f6d096c2882)
+
+ math/auto-libm-test-in           |  1 +
+ math/auto-libm-test-out-sinh     | 25 +++++++++++++++++++++++++
+ sysdeps/ieee754/flt-32/e_sinhf.c |  2 +-
+ 3 files changed, 27 insertions(+), 1 deletion(-)
+
+commit 76ef108ef178ad9f5d707f8579456c1bfb728c1c
+Author:     Adhemerval Zanella <adhemerval.zanella@linaro.org>
+AuthorDate: Fri Jan 31 10:27:39 2025 -0300
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Fri Feb 7 19:02:45 2025 +0100
+
+    math: Fix log10p1f internal table value (BZ 32626)
+    
+    It was copied wrong from CORE-MATH.
+    
+    (cherry picked from commit c79277a16785c8ae96d821414f4d31d654a0177c)
+    (cherry picked from commit bdccbfbc52d3f6957768a0b9d5bd7bc4c90f2744)
+
+ NEWS                                |  3 ++-
+ math/auto-libm-test-in              |  2 ++
+ math/auto-libm-test-out-log10p1     | 25 +++++++++++++++++++++++++
+ sysdeps/ieee754/flt-32/s_log10p1f.c |  2 +-
+ 4 files changed, 30 insertions(+), 2 deletions(-)
+
+commit 0f06698e80cfbb7058ffd8bc91e6e165974ea56f (tag: gentoo/glibc-2.41-1)
+Author:     Adhemerval Zanella <adhemerval.zanella@linaro.org>
+AuthorDate: Mon Apr 13 18:09:20 2020 -0300
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Tue Jan 28 21:14:04 2025 +0100
+
+    linux: Set internal DIR filepos as off64_t (BZ #23960, BZ #24050)
+    
+    It allows to obtain the expected entry offset on telldir and set
+    it correctly on seekdir on platforms where long int is smaller
+    than off64_t.
+    
+    On such cases opendir creates a map entry between the DIR d_off
+    offset and the returned long int (the telldir return value).
+    seekdir will then set the correct offset from the internal list
+    using the telldir as the list key.
+    
+    It also removes the overflow check on readdir and the returned value
+    will be truncated by the non-LFS off_t size.  As Joseph has noted
+    in BZ #23960 comment #22, d_off is an opaque value and since
+    telldir/seekdir works regardless of the returned dirent d_off value.
+    
+    Finally it removes the requirement to check for overflow values on
+    telldir (BZ #24050).
+    
+    Checked on x86_64-linux-gnu, i686-linux-gnu, powerpc-linux-gnu,
+    and arm-linux-gnueabihf.
+    
+    Rebased for glibc-2.41 by Andreas K. Hüttel <dilfridge@gentoo.org>
+
+ include/dirent.h                            |   2 +-
+ sysdeps/unix/sysv/linux/Makefile            |   2 +
+ sysdeps/unix/sysv/linux/alpha/bits/dirent.h |   3 +
+ sysdeps/unix/sysv/linux/bits/dirent.h       |   4 +
+ sysdeps/unix/sysv/linux/closedir.c          |   4 +
+ sysdeps/unix/sysv/linux/dirstream.h         |   9 +-
+ sysdeps/unix/sysv/linux/opendir.c           |   3 +
+ sysdeps/unix/sysv/linux/readdir.c           |  21 ++--
+ sysdeps/unix/sysv/linux/readdir64.c         |  11 +++
+ sysdeps/unix/sysv/linux/rewinddir.c         |   5 +
+ sysdeps/unix/sysv/linux/seekdir.c           |  30 +++++-
+ sysdeps/unix/sysv/linux/telldir.c           |  36 +++++++
+ sysdeps/unix/sysv/linux/telldir.h           |  70 ++++++++++++++
+ sysdeps/unix/sysv/linux/tst-opendir-lfs.c   |   2 +
+ sysdeps/unix/sysv/linux/tst-opendir.c       | 145 ++++++++++++++++++++++++++++
+ 15 files changed, 329 insertions(+), 18 deletions(-)
+
+commit d0789668ddcf204fbec7493c367e2e4a090b401a
+Author:     Adhemerval Zanella <adhemerval.zanella@linaro.org>
+AuthorDate: Wed Mar 1 14:41:23 2023 -0300
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Tue Jan 28 21:14:01 2025 +0100
+
+    support: Add xreallocarray
+    
+    As a wrapper over reallocarray.
+
+ support/Makefile        |  1 +
+ support/support.h       |  2 ++
+ support/xreallocarray.c | 29 +++++++++++++++++++++++++++++
+ 3 files changed, 32 insertions(+)
+
+commit a94ae41cae4d4fe7376f5c266d21e9a7ad47218c
+Author:     Adhemerval Zanella <adhemerval.zanella@linaro.org>
+AuthorDate: Tue Oct 20 13:37:15 2020 -0300
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Tue Jan 28 21:13:58 2025 +0100
+
+    linux: Use getdents64 on non-LFS readdir
+    
+    It is similar to what non-LFS getdents do (including overflow check).
+    
+    Checked on x86_64-linux-gnu and i686-linux-gnu.
+
+ sysdeps/unix/sysv/linux/readdir.c | 97 +++++++++++++++++++++++++++++----------
+ 1 file changed, 73 insertions(+), 24 deletions(-)
+
+commit 3b6cdca22636f806e1eb1b6d100928f19067d32b
+Author:     Andreas K. Hüttel <dilfridge@gentoo.org>
+AuthorDate: Fri Dec 14 20:43:04 2018 +0100
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Tue Jan 28 21:13:55 2025 +0100
+
+    Force -O0 in conform tests to survive $CC changes
+    
+    In bug #659030 Gentoo started passing user's CFLAGS via $CC variable.
+    conform tests should but are not ready to handle -O1/-O2 yet.
+    Tests fail to validate headers due to inlining of weak symbol aliases
+    and other problems. Let's force it back to -O0 until it's fixed upstream.
+    
+    Original patch by Sergei, ported to the new python test framework by Andreas
+    
+    Bug: https://bugs.gentoo.org/659030
+    Signed-off-by: Sergei Trofimovich <slyfox@gentoo.org>
+    Signed-off-by: Andreas K. Hüttel <dilfridge@gentoo.org>
+
+ conform/conformtest.py   | 6 ++++--
+ conform/linknamespace.py | 4 +++-
+ 2 files changed, 7 insertions(+), 3 deletions(-)
+
+commit d8878820bb92ac641ce4124477f678fd67a5fd1a
+Author:     Andreas K. Hüttel <dilfridge@gentoo.org>
+AuthorDate: Mon Oct 22 22:34:13 2018 +0200
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Tue Jan 28 21:13:52 2025 +0100
+
+    Adapt to Gentoo-specific /etc/mail/aliases
+    
+    Patch by pacho2
+    
+    Signed-off-by: Andreas K. Hüttel <dilfridge@gentoo.org>
+    (cherry picked from commit 4e616cda056f471b799beba2b1cedc787ad4ecc0)
+    Signed-off-by: Andreas K. Hüttel <dilfridge@gentoo.org>
+
+ nss/nss_files/files-alias.c    |  2 +-
+ nss/tst-nss-files-alias-leak.c | 18 +++++++++---------
+ support/support_chroot.c       |  8 +++++++-
+ 3 files changed, 17 insertions(+), 11 deletions(-)
+
+commit 8207330fe7776e5dcd79d1686207741aa4f72e70
+Author:     Mike Frysinger <vapier@gentoo.org>
+AuthorDate: Tue Aug 3 00:34:59 2021 +0200
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Tue Jan 28 21:13:49 2025 +0100
+
+    Disable ldconfig during install
+    
+    Do not bother running ldconfig on DESTDIR.  It's a waste of time as we
+    won't use the result (portage will rebuild the cache after install).
+    Also, the Gentoo sandbox does not currently catch chroot() behavior so
+    we end up (incorrectly) flagging it as a violation as a write to /etc.
+    
+    http://sourceware.org/ml/libc-alpha/2012-08/msg00118.html
+    https://bugs.gentoo.org/431038
+    Signed-off-by: Andreas K. Hüttel <dilfridge@gentoo.org>
+
+ Makefile | 1 +
+ 1 file changed, 1 insertion(+)
+
+commit 0a7c7a3e283a55d1bfaa48fdef063a32a4689a2b
+Author:     Andreas K. Hüttel <dilfridge@gentoo.org>
+AuthorDate: Tue Jan 28 21:11:22 2025 +0100
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Tue Jan 28 21:11:22 2025 +0100
+
+    NEWS: start new section
+    
+    Signed-off-by: Andreas K. Hüttel <dilfridge@gentoo.org>
+
+ NEWS | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+commit 9f48a8abb2b2762bf2fc8449bc5871a5b986f508
+Author:     Andreas K. Hüttel <dilfridge@gentoo.org>
+AuthorDate: Tue Jan 28 18:45:20 2025 +0100
+Commit:     Andreas K. Hüttel <dilfridge@gentoo.org>
+CommitDate: Tue Jan 28 18:45:20 2025 +0100
+
+    Remove advisories from release branch
+    
+    Signed-off-by: Andreas K. Hüttel <dilfridge@gentoo.org>
+
+ ADVISORIES                    |  2 ++
+ advisories/GLIBC-SA-2023-0001 | 14 --------
+ advisories/GLIBC-SA-2023-0002 | 15 ---------
+ advisories/GLIBC-SA-2023-0003 | 15 ---------
+ advisories/GLIBC-SA-2023-0004 | 16 ---------
+ advisories/GLIBC-SA-2023-0005 | 18 ----------
+ advisories/GLIBC-SA-2024-0001 | 15 ---------
+ advisories/GLIBC-SA-2024-0002 | 15 ---------
+ advisories/GLIBC-SA-2024-0003 | 13 --------
+ advisories/GLIBC-SA-2024-0004 | 28 ----------------
+ advisories/GLIBC-SA-2024-0005 | 22 -------------
+ advisories/GLIBC-SA-2024-0006 | 32 ------------------
+ advisories/GLIBC-SA-2024-0007 | 28 ----------------
+ advisories/GLIBC-SA-2024-0008 | 26 ---------------
+ advisories/GLIBC-SA-2025-0001 | 25 --------------
+ advisories/README             | 77 -------------------------------------------
+ 16 files changed, 2 insertions(+), 359 deletions(-)

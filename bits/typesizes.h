@@ -63,9 +63,15 @@
 #define __CPU_MASK_TYPE 	__ULONGWORD_TYPE
 
 #ifdef __LP64__
-/* Tell the libc code that off_t and off64_t are actually the same type
-   for all ABI purposes, even if possibly expressed as different base types
-   for C type-checking purposes.  */
+/**
+ * Tell the libc code that off_t and off64_t are actually the same type
+ * for all ABI purposes, even if possibly expressed as different base types
+ * for C type-checking purposes.
+ * 根据系统环境判断 off_t 和 off64_t 是否等价，从而简化代码逻辑并确保跨平台兼容性。
+ *   off_t：默认文件偏移类型，在 32 位系统中通常为 32 位，但可通过 _FILE_OFFSET_BITS=64 编译选项扩展为 64 位
+ *   off64_t：显式 64 位偏移类型，用于支持大文件操作的函数（如 lseek64、open64）
+ * 在 64 位系统 或 32 位系统启用大文件支持 时，off_t 和 off64_t 实际为同一类型。此时，许多函数（如 lseek 和 lseek64）的实现可以合并，避免冗余代码
+ */
 # define __OFF_T_MATCHES_OFF64_T	1
 
 /* Same for ino_t and ino64_t.  */

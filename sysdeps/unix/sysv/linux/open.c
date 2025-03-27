@@ -23,6 +23,7 @@
 
 #include <sysdep-cancel.h>
 
+//
 #ifndef __OFF_T_MATCHES_OFF64_T
 
 /* Open FILE with access OFLAG.  If O_CREAT or O_TMPFILE is in OFLAG,

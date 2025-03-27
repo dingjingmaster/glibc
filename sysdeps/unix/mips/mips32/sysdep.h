@@ -20,8 +20,13 @@
 /* Note that while it's better structurally, going back to call __syscall_error
    can make things confusing if you're debugging---it looks like it's jumping
    backwards into the previous fn.  */
+// __PIC__是否启用了 -fPIC 有关，生成与位置无关的共享库
 #ifdef __PIC__
-#define PSEUDO(name, syscall_name, args) \
+/**
+ * @brief 定义系统调用封装函数。
+ * 它生成一段汇编代码，完成系统调用的参数传递、内核调用触发、错误检查及 errno 设置
+ */
+#  define PSEUDO(name, syscall_name, args) \
   .align 2;								      \
   .set nomips16;							      \
   cfi_startproc;							      \

@@ -493,7 +493,9 @@ include_directories(wcsmbs/bits/types)
 include_directories(wctype)
 include_directories(wctype/bits)
 
-add_executable(glibc_2_41
+file(GLOB_RECURSE INC_HEADERS "${CMAKE_SOURCE_DIR}/*.h")
+
+add_executable(glibc_2_41 ${INC_HEADERS}
     argp/bits/argp-ldbl.h
     argp/argp-ba.c
     argp/argp-eexst.c
